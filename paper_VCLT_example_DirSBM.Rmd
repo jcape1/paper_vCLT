@@ -1,0 +1,235 @@
+---
+title: "Varimax CLT paper - numerical example - directed SBM"
+author:
+- Joshua Cape (jrcape@wisc.edu)
+output: html_notebook
+---
+
+### Preamble
+```{r, message=FALSE, warning=FALSE}
+rm(list = ls())
+source("VCLT_preamble.R")
+```
+
+### Simulation - small graph
+```{r}
+
+  n <- 1000
+  rho <- 1
+  
+  pi.vec.left <- c(1/4, 3/4)
+  
+  pi.vec.right <- c(2/3, 1/3)
+  
+  aa <- 0.4; bb <- 0.6;
+  cc <- 0.3; dd <- 0.7;
+   
+  pref.mtx <- rbind(c(aa, bb), c(cc, dd))
+  
+  d <- sum(svd(pref.mtx)$d > 1e-10)
+  
+  K <- dim(pref.mtx)[1]
+
+#------------------------------------------------
+  
+  set.seed(1234567)
+  
+  source("VCLT_sbms_directed.R")
+
+# fig.height=1.5, fig.width=1.5
+
+  top.d.trunc <- svdr(runif(n * n) <= Z.mtx.left %*% (rho*pref.mtx) %*% t(Z.mtx.right), d)
+  # NB: avoids storing large graph
+  
+  U.hat <- top.d.trunc$u
+  V.hat <- top.d.trunc$v
+  
+  vmx.left <- varimax(U.hat, normalize = FALSE)
+  Z.hat <- sqrt(n) * vmx.left$loadings
+  vmx.rot.left <- vmx.left$rotmat
+  
+        m1L <- diag(1/sqrt(pi.vec.left)); m1L;
+        m2L <- Z.hat[c(min(which(Z.mtx.left[,1]==1)),
+                       min(which(Z.mtx.left[,2]==1))),]; m2L;
+        orien.mtxL <- round(svd(t(m2L) %*% m1L)$u %*% t(svd(t(m2L) %*% m1L)$v)); orien.mtxL;
+        Z.hat <- Z.hat %*% orien.mtxL
+
+  vmx.right <- varimax(V.hat, normalize = FALSE)
+  Y.hat <- sqrt(n) * vmx.right$loadings
+  vmx.rot.right <- vmx.right$rotmat
+  
+        m1R <- diag(1/sqrt(pi.vec.right)); m1R;
+        m2R <- Y.hat[c(min(which(Z.mtx.right[,1]==1)),
+                       min(which(Z.mtx.right[,2]==1))),]; m2R;
+        orien.mtxR <- round(svd(t(m2R) %*% m1R)$u %*% t(svd(t(m2R) %*% m1R)$v)); orien.mtxR;
+        Y.hat <- Y.hat %*% orien.mtxR
+  
+  estim.mean.vec.left <- lapply(1:K, function(xxx) Mclust(Z.hat[memb.index.left==xxx,], G=1, verbose=FALSE)$parameters$mean)
+  estim.mean.vec.right <- lapply(1:K, function(xxx) Mclust(Y.hat[memb.index.right==xxx,], G=1, verbose=FALSE)$parameters$mean)
+
+  bound.val <- 3 # <--- boundary value for plotting
+  
+  dev.new(width=2, height=2, unit="in")
+  plot.left.small <-
+    plot(Z.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.left)), pch=20);
+  draw.circle(0,0,1/sqrt(min(pi.vec.left)), lty=2); draw.circle(0,0,1/sqrt(max(pi.vec.left)), lty=2)
+  
+  plot.right.small <-
+    plot(Y.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.right)), pch=20);
+  draw.circle(0,0,1/sqrt(min(pi.vec.right)), lty=2); draw.circle(0,0,1/sqrt(max(pi.vec.right)), lty=2)
+  
+```
+
+
+### Condensed Markdown viz --- left small
+```{r plot.left.small, fig.height=1.1, fig.width=1.1, fig.asp=1}
+  par(mar = c(2, 2, 2, 2))
+  plot.left.small <-
+    plot(Z.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", xlab="", ylab="") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.left)), pch=20);
+  draw.circle(0,0,1/sqrt(min(pi.vec.left)), lty=2); draw.circle(0,0,1/sqrt(max(pi.vec.left)), lty=2)
+```
+
+### Condensed Markdown viz --- right small
+```{r plot.right.small, fig.height=1.1, fig.width=1.1, fig.asp=1}
+  par(mar = c(2, 2, 2, 2))
+  plot.right.small <-
+    plot(Y.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", xlab="", ylab="") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.right)), pch=20);
+  draw.circle(0,0,1/sqrt(min(pi.vec.right)), lty=2); draw.circle(0,0,1/sqrt(max(pi.vec.right)), lty=2)
+```
+
+### PDF --- Export plot.left.small
+```{r}
+  pdf(file="plot.left.small.pdf", width=5, height=5)
+  par(mar = c(3,3,3,3))
+  plot(Z.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", cex=2, cex.axis=1.5, pch=1, xlab="", ylab="") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.left)), pch=20, lwd=3);
+  draw.circle(0,0,1/sqrt(min(pi.vec.left)), lty=5, lwd=2); draw.circle(0,0,1/sqrt(max(pi.vec.left)), lty=5, lwd=2)
+  dev.off
+```
+### PDF --- Export plot.right.small
+```{r}
+  pdf(file="plot.right.small.pdf", width=5, height=5)
+  par(mar = c(3,3,3,3))
+  plot(Y.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", cex=2, cex.axis=1.5, pch=1, xlab="", ylab="") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.right)), pch=20, lwd=3);
+  draw.circle(0,0,1/sqrt(min(pi.vec.right)), lty=5, lwd=2); draw.circle(0,0,1/sqrt(max(pi.vec.right)), lty=5, lwd=2)
+  dev.off
+```
+
+
+
+
+### Simulation - large graph
+```{r}
+
+  n <- 10000
+  rho <- 1
+  
+  pi.vec.left <- c(1/4, 3/4)
+  
+  pi.vec.right <- c(2/3, 1/3)
+  
+  aa <- 0.4; bb <- 0.6;
+  cc <- 0.3; dd <- 0.7;
+   
+  pref.mtx <- rbind(c(aa, bb), c(cc, dd))
+  
+  d <- sum(svd(pref.mtx)$d > 1e-10)
+  
+  K <- dim(pref.mtx)[1]
+
+#------------------------------------------------
+  
+  set.seed(1234)
+  
+  source("VCLT_sbms_directed.R")
+
+# fig.height=1.5, fig.width=1.5
+
+  top.d.trunc <- svdr(runif(n * n) <= Z.mtx.left %*% (rho*pref.mtx) %*% t(Z.mtx.right), d)
+  # NB: avoids storing large graph in memory
+  
+  U.hat <- top.d.trunc$u
+  V.hat <- top.d.trunc$v
+  
+  vmx.left <- varimax(U.hat, normalize = FALSE)
+  Z.hat <- sqrt(n) * vmx.left$loadings
+  vmx.rot.left <- vmx.left$rotmat
+
+        m1L <- diag(1/sqrt(pi.vec.left)); m1L;
+        m2L <- Z.hat[c(min(which(Z.mtx.left[,1]==1)),
+                       min(which(Z.mtx.left[,2]==1))),]; m2L;
+        orien.mtxL <- round(svd(t(m2L) %*% m1L)$u %*% t(svd(t(m2L) %*% m1L)$v)); orien.mtxL;
+        Z.hat <- Z.hat %*% orien.mtxL
+  
+  vmx.right <- varimax(V.hat, normalize = FALSE)
+  Y.hat <- sqrt(n) * vmx.right$loadings
+  vmx.rot.right <- vmx.right$rotmat
+  
+  
+        m1R <- diag(1/sqrt(pi.vec.right)); m1R;
+        m2R <- Y.hat[c(min(which(Z.mtx.right[,1]==1)),
+                       min(which(Z.mtx.right[,2]==1))),]; m2R;
+        orien.mtxR <- round(svd(t(m2R) %*% m1R)$u %*% t(svd(t(m2R) %*% m1R)$v)); orien.mtxR;
+        Y.hat <- Y.hat %*% orien.mtxR
+  
+  
+  estim.mean.vec.left <- lapply(1:K, function(xxx) Mclust(Z.hat[memb.index.left==xxx,], G=1, verbose=FALSE)$parameters$mean)
+  estim.mean.vec.right <- lapply(1:K, function(xxx) Mclust(Y.hat[memb.index.right==xxx,], G=1, verbose=FALSE)$parameters$mean)
+
+  bound.val <- 3 # <--- boundary value for plotting
+  
+  plot(Z.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.left)), pch=20);
+  draw.circle(0,0,1/sqrt(min(pi.vec.left)), lty=2); draw.circle(0,0,1/sqrt(max(pi.vec.left)), lty=2)
+  
+  plot(Y.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.right)), pch=20);
+  draw.circle(0,0,1/sqrt(min(pi.vec.right)), lty=2); draw.circle(0,0,1/sqrt(max(pi.vec.right)), lty=2)
+  
+```
+
+
+### Condensed Markdown viz --- left big
+```{r plot.left.big, fig.height=1.1, fig.width=1.1, fig.asp=1}
+  par(mar = c(2, 2, 2, 2))
+  plot.left.big <-
+    plot(Z.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", xlab="", ylab="") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.left)), pch=20);
+  draw.circle(0,0,1/sqrt(min(pi.vec.left)), lty=2); draw.circle(0,0,1/sqrt(max(pi.vec.left)), lty=2)
+```
+
+
+### Condensed Markdown viz --- right big
+```{r plot.right.big, fig.height=1.1, fig.width=1.1, fig.asp=1}
+  par(mar = c(2, 2, 2, 2))
+  plot.right.big <-
+    plot(Y.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", xlab="", ylab="") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.right)), pch=20);
+  draw.circle(0,0,1/sqrt(min(pi.vec.right)), lty=2); draw.circle(0,0,1/sqrt(max(pi.vec.right)), lty=2)
+```
+
+
+### PDF --- Export plot.left.big
+```{r}
+  pdf(file="plot.left.big.pdf", width=5, height=5)
+  par(mar = c(3,3,3,3))
+  plot(Z.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", cex=2, cex.axis=1.5, pch=1, xlab="", ylab="") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.left)), pch=20, lwd=3);
+  draw.circle(0,0,1/sqrt(min(pi.vec.left)), lty=5, lwd=2); draw.circle(0,0,1/sqrt(max(pi.vec.left)), lty=5, lwd=2)
+  dev.off
+```
+
+### PDF --- Export plot.right.big
+```{r}
+  pdf(file="plot.right.big.pdf", width=5, height=5)
+  par(mar = c(3,3,3,3))
+  plot(Y.hat, xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", cex=2, cex.axis=1.5, pch=1, xlab="", ylab="") +
+    abline(v=0,h=0, col="red") + points(t(do.call(cbind, estim.mean.vec.right)), pch=20, lwd=3);
+  draw.circle(0,0,1/sqrt(min(pi.vec.right)), lty=5, lwd=2); draw.circle(0,0,1/sqrt(max(pi.vec.right)), lty=5, lwd=2)
+  dev.off
+```

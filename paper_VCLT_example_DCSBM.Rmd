@@ -1,0 +1,87 @@
+---
+title: "Varimax CLT paper - numerical example - degree-corrected SBM"
+author:
+- Joshua Cape (jrcape@wisc.edu)
+output: html_notebook
+---
+
+## Preamble
+```{r, message=FALSE, warning=FALSE}
+rm(list = ls())
+source("VCLT_preamble.R")
+```
+
+## Run simulation
+```{r}
+set.seed(12345)
+source("VCLT_dcsbm_K3_aff.R")
+top.d.trunc <- svdr(sym(runif(n * n) <= Z.mtx.left %*% (rho*pref.mtx) %*% t(Z.mtx.right)), d)
+```
+
+```{r}
+U.hat <- top.d.trunc$u
+V.hat <- top.d.trunc$v
+
+vmx.left <- varimax(U.hat, normalize = FALSE)
+Z.hat <- sqrt(n) * vmx.left$loadings
+vmx.rot.left <- vmx.left$rotmat
+
+
+      finder.vec <- c(min(which(memb.index.left==1)),
+                    min(which(memb.index.left==2)),
+                    min(which(memb.index.left==3)));
+      m1L <- diag(1/sqrt(pi.vec.left));
+      m2L <- Z.hat[finder.vec,];
+      orien.mtxL <- round(svd(t(m2L) %*% m1L)$u %*% t(svd(t(m2L) %*% m1L)$v));
+      Z.hat <- Z.hat %*% orien.mtxL
+
+      
+estim.mean.vec.left.1.2 <- lapply(1:K, function(xxx) Mclust(Z.hat[memb.index.left==xxx,1:2], G=1, verbose=FALSE)$parameters$mean)
+estim.mean.vec.left.2.3 <- lapply(1:K, function(xxx) Mclust(Z.hat[memb.index.left==xxx,2:3], G=1, verbose=FALSE)$parameters$mean)
+
+bound.val <- 3 # <--- boundary value for plotting
+```
+
+## Condensed Markdown viz for R --- blocks one and two 
+```{r plot.1.2, fig.height=2, fig.width=2, fig.asp=1}
+par(mar = c(1,1,1,1)+1)
+plot.1.2 <- plot(Z.hat[,1:2], xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", xlab="", ylab="") +
+  abline(v=0,h=0, col="red") +
+  points(t(do.call(cbind, estim.mean.vec.left.1.2)), pch=20);
+draw.circle(0,0,theta.mean/mmt.const, lty=2);
+draw.circle(0,0,theta.mean/mmt.const, lty=2);
+```
+
+### Export PDF image --- blocks one and two
+```{r message=FALSE, warning=FALSE}
+pdf(file="plot12dcsbm.pdf", width=5, height=5)
+par(mar = c(3,3,3,3))
+plot(Z.hat[,1:2], xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", cex=2, cex.axis=1.5, pch=1, xlab="", ylab="") +
+  abline(v=0,h=0, col="red") +
+  points(t(do.call(cbind, estim.mean.vec.left.1.2)), pch=20, lwd=3);
+draw.circle(0,0,theta.mean/mmt.const, lty=5, lwd=2);
+draw.circle(0,0,theta.mean/mmt.const, lty=5, lwd=2);
+dev.off()
+```
+
+### Condensed Markdown viz for R --- blocks two and three
+```{r plot.2.3, fig.height=2, fig.width=2, fig.asp=1}
+par(mar = c(1,1,1,1)+1)
+plot.2.3 <- plot(Z.hat[,2:3], xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", xlab="", ylab="") +
+  abline(v=0,h=0, col="red") +
+  points(t(do.call(cbind, estim.mean.vec.left.2.3)), pch=20);
+draw.circle(0,0,theta.mean/mmt.const, lty=2);
+draw.circle(0,0,theta.mean/mmt.const, lty=2);
+```
+
+### Export PDF image --- blocks two and three
+```{r message=FALSE, warning=FALSE}
+pdf(file="plot23dcsbm.pdf", width=5, height=5)
+par(mar = c(3,3,3,3))
+plot(Z.hat[,2:3], xlim=c(-bound.val,bound.val), ylim=c(-bound.val,bound.val), asp=1, col="gray", cex=2, cex.axis=1.5, pch=1, xlab="", ylab="") +
+  abline(v=0,h=0, col="red") +
+  points(t(do.call(cbind, estim.mean.vec.left.2.3)), pch=20, lwd=3);
+draw.circle(0,0,theta.mean/mmt.const, lty=5, lwd=2);
+draw.circle(0,0,theta.mean/mmt.const, lty=5, lwd=2);
+dev.off()
+```
